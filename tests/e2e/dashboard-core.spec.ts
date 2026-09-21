@@ -56,7 +56,7 @@ test('user can operate overview, sources and filters', async ({ page }) => {
 
   const toggle = page.locator('[data-source-toggle="tom-hardware"]');
   await expect(toggle).toBeChecked();
-  await toggle.uncheck();
+  await toggle.locator('xpath=..').click();
   await expect(toggle).not.toBeChecked();
 
   await page.locator('[data-source-edit="tom-hardware"]').click();
