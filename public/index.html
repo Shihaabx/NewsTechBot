@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111315">
+  <title>NewsTech Control</title>
+  <link rel="icon" href="/assets/newstech-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/api/brand/logo" alt="NewsTech logo">
+        <div>
+          <strong>NewsTech</strong>
+          <span>Juraa Tech Newsroom</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Dashboard">
+        <button class="nav-item active" data-view="overview"><span>⌂</span>Overview</button>
+        <button class="nav-item" data-view="sources"><span>◉</span>Sources</button>
+        <button class="nav-item" data-view="filters"><span>⌁</span>Filters</button>
+        <button class="nav-item" data-view="discord"><span>◈</span>Discord</button>
+        <button class="nav-item" data-view="system"><span>⚙</span>System</button>
+        <button class="nav-item" data-view="brand"><span>◆</span>Brand</button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-status">
+          <span id="sidebarDot" class="status-dot"></span>
+          <div>
+            <strong id="sidebarStatus">Connecting</strong>
+            <span id="sidebarMeta">News intelligence</span>
+          </div>
+        </div>
+        <button id="logoutBtn" class="ghost small hidden">Lock dashboard</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">JURAA TECH • NEWS INTELLIGENCE</p>
+          <h1 id="pageTitle">Overview</h1>
+        </div>
+        <div class="top-actions">
+          <button id="pollNowTop" class="ghost">↻ Poll now</button>
+          <button id="pauseTop" class="primary">Pause</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-overview">
+        <div class="hero-panel">
+          <div>
+            <span class="pill" id="heroState">LIVE</span>
+            <h2>One control room for every NewsTech decision.</h2>
+            <p>Monitor collection health, see what the filter is doing, and control the bot without Discord commands.</p>
+          </div>
+          <div class="hero-mark">
+            <img src="/api/brand/logo" alt="">
+          </div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card"><span>Enabled sources</span><strong id="metricSources">—</strong><small>approved feeds</small></article>
+          <article class="metric-card"><span>Published</span><strong id="metricPublished">—</strong><small>last poll</small></article>
+          <article class="metric-card"><span>Filtered</span><strong id="metricFiltered">—</strong><small>noise removed</small></article>
+          <article class="metric-card"><span>Duplicates</span><strong id="metricDuplicates">—</strong><small>last poll</small></article>
+          <article class="metric-card"><span>Seen history</span><strong id="metricSeen">—</strong><small>30-day memory</small></article>
+          <article class="metric-card"><span>Feed failures</span><strong id="metricFailures">—</strong><small>last poll</small></article>
+        </div>
+
+        <div class="two-col">
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">QUICK CONTROL</p><h3>Collector</h3></div>
+              <span id="lastPollBadge" class="badge">No poll yet</span>
+            </div>
+            <div class="quick-grid">
+              <button id="overviewPoll" class="action-card"><span>↻</span><strong>Poll now</strong><small>Fetch approved feeds immediately</small></button>
+              <button id="overviewPause" class="action-card"><span>Ⅱ</span><strong>Pause collector</strong><small>Keep dashboard and Discord online</small></button>
+              <button id="overviewTest" class="action-card"><span>✓</span><strong>Test Discord</strong><small>Send a branded connection card</small></button>
+              <button class="action-card" data-go="sources"><span>＋</span><strong>Add source</strong><small>Approve another RSS/Atom feed</small></button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">ACTIVITY</p><h3>Recent events</h3></div>
+              <button id="refreshStatus" class="ghost small">Refresh</button>
+            </div>
+            <div id="eventList" class="event-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-sources">
+        <div class="section-head">
+          <div><p>Only sources you approve are collected.</p></div>
+          <button id="addSourceBtn" class="primary">＋ Add source</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-toolbar">
+            <input id="sourceSearch" class="input" placeholder="Search sources…">
+            <span id="sourceCount" class="badge">0 sources</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Source</th><th>Category</th><th>Trust</th><th>Type</th><th>Enabled</th><th></th></tr></thead>
+              <tbody id="sourcesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-filters">
+        <div class="section-head">
+          <div><p>Control what NewsTech considers valuable, urgent, or unwanted.</p></div>
+          <button id="saveFiltersBtn" class="primary">Save filters</button>
+        </div>
+
+        <div class="filter-grid">
+          <article class="panel">
+            <div class="field-head"><div><h3>Blocked topics</h3><p>Hard reject. Phone topics belong here.</p></div><span class="tone danger">BLOCK</span></div>
+            <textarea id="blockedTopics" class="textarea tall" placeholder="one term per line"></textarea>
+          </article>
+          <article class="panel">
+            <div class="field-head"><div><h3>High-value signals</h3><p>Terms that make a story more useful.</p></div><span class="tone orange">BOOST</span></div>
+            <textarea id="highValueTerms" class="textarea tall" placeholder="one term per line"></textarea>
+          </article>
+          <article class="panel">
+            <div class="field-head"><div><h3>Breaking signals</h3><p>Urgent terms that can reach breaking-news.</p></div><span class="tone warning">URGENT</span></div>
+            <textarea id="breakingTerms" class="textarea tall" placeholder="one term per line"></textarea>
+          </article>
+          <article class="panel">
+            <div class="field-head"><div><h3>Low-value signals</h3><p>Promotional or noisy content gets penalized.</p></div><span class="tone muted">DOWNRANK</span></div>
+            <textarea id="lowValueTerms" class="textarea tall" placeholder="one term per line"></textarea>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head"><div><p class="eyebrow">CLASSIFICATION</p><h3>Category keywords</h3></div></div>
+          <div id="categoryRules" class="category-grid"></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-discord">
+        <div class="section-head">
+          <div><p>Map each NewsTech category to the correct Discord channel.</p></div>
+          <div class="button-row">
+            <button id="refreshDiscordBtn" class="ghost">Refresh connection</button>
+            <button id="saveDiscordBtn" class="primary">Save channels</button>
+          </div>
+        </div>
+
+        <article class="panel discord-profile">
+          <img id="discordAvatar" src="/api/brand/logo" alt="">
+          <div>
+            <p class="eyebrow">CONNECTED BOT</p>
+            <h3 id="discordBotName">NewsTech</h3>
+            <p id="discordGuildName" class="muted">Checking server…</p>
+          </div>
+          <button id="sendTestBtn" class="ghost">Send test card</button>
+        </article>
+
+        <div id="channelGrid" class="channel-grid"></div>
+      </section>
+
+      <section class="view" id="view-system">
+        <div class="section-head">
+          <div><p>Collection timing, scoring thresholds, and maintenance.</p></div>
+          <button id="saveSystemBtn" class="primary">Save system settings</button>
+        </div>
+
+        <div class="system-grid">
+          <article class="panel">
+            <p class="eyebrow">COLLECTOR</p>
+            <div class="form-grid">
+              <label>Poll interval <span>minutes</span><input id="pollInterval" class="input" type="number" min="2" max="1440"></label>
+              <label>Items per source <span>1–100</span><input id="maxItems" class="input" type="number" min="1" max="100"></label>
+              <label>Maximum article age <span>hours</span><input id="maxAge" class="input" type="number" min="1" max="720"></label>
+            </div>
+          </article>
+
+          <article class="panel">
+            <p class="eyebrow">SCORING</p>
+            <div class="form-grid">
+              <label>Publish threshold <span>0–100</span><input id="newsMinScore" class="input" type="number" min="0" max="100"></label>
+              <label>Breaking threshold <span>0–100</span><input id="breakingMinScore" class="input" type="number" min="0" max="100"></label>
+            </div>
+            <div class="score-preview">
+              <span>Noise</span><div><i id="scoreNeedle"></i></div><span>High value</span>
+            </div>
+          </article>
+
+          <article class="panel danger-zone">
+            <p class="eyebrow">MAINTENANCE</p>
+            <h3>Seen-history memory</h3>
+            <p>Clearing this makes old feed items eligible for evaluation again.</p>
+            <button id="clearHistoryBtn" class="danger-btn">Clear duplicate history</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-brand">
+        <div class="section-head">
+          <div><p>NewsTech identity across the dashboard and Discord bot profile.</p></div>
+        </div>
+
+        <div class="brand-grid">
+          <article class="panel brand-preview">
+            <div class="logo-stage"><img id="brandPreview" src="/api/brand/logo" alt="NewsTech logo"></div>
+            <div>
+              <p class="eyebrow">BOT IDENTITY</p>
+              <h2>NewsTech</h2>
+              <p>Juraa Tech Newsroom</p>
+              <div class="swatches"><i class="swatch orange"></i><i class="swatch dark"></i><i class="swatch light"></i><i class="swatch gray"></i></div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <p class="eyebrow">LOGO</p>
+            <h3>Use the official mark</h3>
+            <p class="muted">Upload PNG, JPEG, or WebP up to 2 MB. The default NewsTech mark follows the Juraa color system until you upload the final logo.</p>
+            <input id="logoFile" class="file-input" type="file" accept="image/png,image/jpeg,image/webp">
+            <div class="button-row">
+              <button id="uploadLogoBtn" class="ghost">Upload logo</button>
+              <button id="resetLogoBtn" class="ghost">Reset default</button>
+            </div>
+            <hr>
+            <h3>Apply to Discord</h3>
+            <p class="muted">Updates the bot username to <strong>NewsTech</strong> and applies the current logo as its avatar.</p>
+            <button id="applyIdentityBtn" class="primary">Apply bot identity</button>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="loginOverlay" class="overlay hidden">
+    <form id="loginForm" class="login-card">
+      <img src="/assets/newstech-logo.svg" alt="">
+      <p class="eyebrow">PRIVATE CONTROL ROOM</p>
+      <h2>Unlock NewsTech</h2>
+      <p>Enter the dashboard token configured on the host.</p>
+      <input id="tokenInput" class="input" type="password" autocomplete="current-password" placeholder="Dashboard token">
+      <button class="primary" type="submit">Unlock dashboard</button>
+    </form>
+  </div>
+
+  <div id="sourceModal" class="overlay hidden">
+    <form id="sourceForm" class="modal-card">
+      <div class="modal-head"><div><p class="eyebrow">SOURCE</p><h2 id="sourceModalTitle">Add source</h2></div><button type="button" id="closeSourceModal" class="icon-btn">×</button></div>
+      <input id="sourceId" type="hidden">
+      <label>Name<input id="sourceName" class="input" required maxlength="100"></label>
+      <label>RSS / Atom URL<input id="sourceUrl" class="input" type="url" required placeholder="https://…/feed.xml"></label>
+      <div class="form-grid two">
+        <label>Category<select id="sourceCategory" class="input"></select></label>
+        <label>Trust score<input id="sourceTrust" class="input" type="number" min="0" max="100" value="70"></label>
+      </div>
+      <div class="check-row">
+        <label><input id="sourceOfficial" type="checkbox"> Official source</label>
+        <label><input id="sourceEnabled" type="checkbox" checked> Enabled</label>
+      </div>
+      <div id="sourceTestResult" class="inline-result hidden"></div>
+      <div class="modal-actions">
+        <button type="button" id="testSourceBtn" class="ghost">Test feed</button>
+        <button type="submit" class="primary">Save source</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="confirmOverlay" class="overlay hidden">
+    <div class="confirm-card">
+      <h3 id="confirmTitle">Confirm action</h3>
+      <p id="confirmText"></p>
+      <div class="button-row end">
+        <button id="confirmCancel" class="ghost">Cancel</button>
+        <button id="confirmOk" class="danger-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

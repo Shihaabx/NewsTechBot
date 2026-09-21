@@ -4,6 +4,10 @@ services:
     container_name: newstechbot
     restart: unless-stopped
     env_file: .env
+    environment:
+      DASHBOARD_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8787:8787"
     volumes:
-      - ./config:/app/config:ro
+      - ./config:/app/config
       - ./data:/app/data

@@ -6,19 +6,26 @@ import { fetchSource } from './feeds/fetcher.js';
 import { scoreArticle } from './core/scorer.js';
 import { StateStore } from './storage/state.js';
 import { DiscordPublisher } from './discord/publisher.js';
-import {
-  attachInteractionHandler,
-  registerCommands,
-  type RuntimeStatus,
-} from './discord/commands.js';
+import { attachInteractionHandler } from './discord/commands.js';
 import { BRAND } from './brand.js';
+import { SettingsStore, defaultsFromEnv } from './control/settings.js';
+import { EventLog } from './control/events.js';
+import { BrandStore } from './control/brand-store.js';
+import type { PollCycle, RuntimeStatus } from './control/runtime.js';
+import { startDashboard } from './dashboard/server.js';
 
 const env = loadEnv();
-const store = new StateStore(path.resolve(env.DATA_PATH));
-const publisher = new DiscordPublisher(env);
+const settingsStore = new SettingsStore(
+  path.resolve(env.SETTINGS_PATH),
+  defaultsFromEnv(env),
+);
+const stateStore = new StateStore(path.resolve(env.DATA_PATH));
+const brandStore = new BrandStore(path.resolve(env.BRAND_LOGO_PATH));
+const events = new EventLog();
+const publisher = new DiscordPublisher(env, settingsStore);
 
-let enabledSourceNames: string[] = [];
 let running = false;
+let timer: NodeJS.Timeout | undefined;
 
 const status: RuntimeStatus = {
   startedAt: new Date().toISOString(),
@@ -26,23 +33,57 @@ const status: RuntimeStatus = {
   fetched: 0,
   published: 0,
   filtered: 0,
+  duplicates: 0,
   failedSources: 0,
+  running: false,
 };
 
-function isTooOld(date?: Date) {
+function isTooOld(date: Date | undefined, maxAgeHours: number) {
   if (!date || Number.isNaN(date.getTime())) return false;
-  return Date.now() - date.getTime() > env.MAX_ARTICLE_AGE_HOURS * 3_600_000;
+  return Date.now() - date.getTime() > maxAgeHours * 3_600_000;
 }
 
-async function poll() {
+async function poll(force = false): Promise<PollCycle> {
+  const startedAt = new Date();
+  const settings = settingsStore.get();
+
   if (running) {
-    console.warn('[NewsTech] Poll skipped because the previous poll is still running.');
-    return;
+    return {
+      startedAt: startedAt.toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+      fetched: 0,
+      published: 0,
+      filtered: 0,
+      duplicates: 0,
+      failedSources: 0,
+      skipped: 'already-running',
+    };
+  }
+
+  if (settings.paused && !force) {
+    return {
+      startedAt: startedAt.toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+      fetched: 0,
+      published: 0,
+      filtered: 0,
+      duplicates: 0,
+      failedSources: 0,
+      skipped: 'paused',
+    };
   }
 
   running = true;
-  const started = Date.now();
-  const cycle = { fetched: 0, published: 0, filtered: 0, failedSources: 0 };
+  status.running = true;
+  const cycle = {
+    fetched: 0,
+    published: 0,
+    filtered: 0,
+    duplicates: 0,
+    failedSources: 0,
+  };
 
   try {
     const [sources, rules] = await Promise.all([
@@ -51,79 +92,129 @@ async function poll() {
     ]);
 
     const enabled = sources.filter((source) => source.enabled);
-    enabledSourceNames = enabled.map((source) => source.name);
     status.enabledSources = enabled.length;
 
     for (const source of enabled) {
       try {
         const articles = await fetchSource(source);
 
-        for (const raw of articles.slice(0, env.MAX_ITEMS_PER_SOURCE)) {
+        for (const raw of articles.slice(0, settings.maxItemsPerSource)) {
           cycle.fetched += 1;
           const article = scoreArticle(raw, rules);
 
-          if (store.has(article.fingerprint)) continue;
+          if (stateStore.has(article.fingerprint)) {
+            cycle.duplicates += 1;
+            continue;
+          }
 
-          if (isTooOld(article.publishedAt) || article.blocked || article.score < env.NEWS_MIN_SCORE) {
+          if (
+            isTooOld(article.publishedAt, settings.maxArticleAgeHours)
+            || article.blocked
+            || article.score < settings.newsMinScore
+          ) {
             cycle.filtered += 1;
-            await store.mark(article.fingerprint, article.title, article.url);
+            await stateStore.mark(article.fingerprint, article.title, article.url);
             continue;
           }
 
           const published = await publisher.publish(article);
           if (published) {
             cycle.published += 1;
-            await store.mark(article.fingerprint, article.title, article.url);
+            await stateStore.mark(article.fingerprint, article.title, article.url);
           }
         }
       } catch (error) {
         cycle.failedSources += 1;
+        const detail = error instanceof Error ? error.message : String(error);
         console.error(`[NewsTech:${source.id}] Feed failed`, error);
+        events.add('error', `Feed failed: ${source.name}`, detail);
       }
     }
   } finally {
-    status.lastPollAt = new Date().toISOString();
-    status.lastPollDurationMs = Date.now() - started;
+    const completedAt = new Date();
+    status.lastPollAt = completedAt.toISOString();
+    status.lastPollDurationMs = completedAt.getTime() - startedAt.getTime();
     status.fetched = cycle.fetched;
     status.published = cycle.published;
     status.filtered = cycle.filtered;
+    status.duplicates = cycle.duplicates;
     status.failedSources = cycle.failedSources;
+    status.running = false;
     running = false;
 
-    console.log(
-      `[NewsTech] Poll complete: ${cycle.published} published, ${cycle.filtered} filtered, ${cycle.failedSources} source failures.`,
+    const level = cycle.failedSources > 0 ? 'warning' : 'success';
+    events.add(
+      level,
+      `Poll finished: ${cycle.published} published`,
+      `${cycle.fetched} fetched • ${cycle.filtered} filtered • ${cycle.duplicates} duplicates • ${cycle.failedSources} source failures`,
     );
   }
+
+  return {
+    startedAt: startedAt.toISOString(),
+    completedAt: new Date().toISOString(),
+    durationMs: status.lastPollDurationMs ?? 0,
+    ...cycle,
+  };
+}
+
+function scheduleNext() {
+  if (timer) clearTimeout(timer);
+  const minutes = settingsStore.get().pollIntervalMinutes;
+  timer = setTimeout(async () => {
+    await poll(false);
+    scheduleNext();
+  }, minutes * 60_000);
+}
+
+async function refreshSourceCount() {
+  try {
+    const sources = await loadSources(env.SOURCES_PATH);
+    status.enabledSources = sources.filter((source) => source.enabled).length;
+  } catch {}
 }
 
 async function main() {
-  await store.load();
+  await Promise.all([
+    settingsStore.load(),
+    stateStore.load(),
+  ]);
+
+  await refreshSourceCount();
   await publisher.start();
+  attachInteractionHandler(publisher.client, settingsStore);
 
-  attachInteractionHandler(
-    publisher.client,
-    env,
-    () => enabledSourceNames,
-    () => ({ ...status }),
-  );
-
-  const clientId = publisher.client.user?.id;
-  if (!clientId) throw new Error('Discord client did not expose an application ID after login.');
-
-  await registerCommands(clientId, env);
-
+  events.add('success', 'Discord bot connected', publisher.client.user?.tag);
   console.log(
-    `[${BRAND.name}] ${BRAND.workspace} online. Polling every ${env.POLL_INTERVAL_MINUTES} minutes.`,
+    `[${BRAND.name}] ${BRAND.workspace} online. Polling every ${settingsStore.get().pollIntervalMinutes} minutes.`,
   );
 
-  await poll();
-  setInterval(() => void poll(), env.POLL_INTERVAL_MINUTES * 60_000);
+  await startDashboard({
+    env,
+    settingsStore,
+    stateStore,
+    brandStore,
+    publisher,
+    events,
+    getStatus: () => ({ ...status }),
+    pollNow: () => poll(true),
+    onSettingsChanged: () => {
+      scheduleNext();
+      void refreshSourceCount();
+    },
+  });
+
+  if (!settingsStore.get().paused) {
+    await poll(false);
+  }
+  scheduleNext();
 }
 
 let shuttingDown = false;
 async function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
+  if (timer) clearTimeout(timer);
   console.log(`[NewsTech] ${signal} received. Shutting down.`);
   await publisher.stop();
   process.exit(0);

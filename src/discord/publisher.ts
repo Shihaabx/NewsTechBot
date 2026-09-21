@@ -5,10 +5,13 @@ import {
   Client,
   EmbedBuilder,
   GatewayIntentBits,
+  PermissionFlagsBits,
   TextChannel,
 } from 'discord.js';
 import type { ScoredArticle } from '../core/types.js';
 import type { AppEnv } from '../config/env.js';
+import type { RuntimeSettings } from '../control/settings.js';
+import { SettingsStore } from '../control/settings.js';
 import { BRAND, getCategoryMeta, getPriorityLabel } from '../brand.js';
 import { channelIdForCategory } from './channels.js';
 
@@ -31,50 +34,140 @@ export function workflowButtons(state: WorkflowState = 'none') {
   );
 }
 
+export interface ChannelCheck {
+  key: string;
+  id?: string;
+  configured: boolean;
+  valid: boolean;
+  name?: string;
+  error?: string;
+}
+
 export class DiscordPublisher {
   readonly client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-  constructor(private readonly env: AppEnv) {}
+  constructor(
+    private readonly env: AppEnv,
+    private readonly settingsStore: SettingsStore,
+  ) {}
 
   async start() {
     await this.client.login(this.env.DISCORD_BOT_TOKEN);
-    await this.validateDestinations();
+    await this.validateSettingsChannels(this.settingsStore.get());
   }
 
   async stop() {
     this.client.destroy();
   }
 
-  private configuredChannels() {
+  async channelChecks(settings = this.settingsStore.get()): Promise<ChannelCheck[]> {
+    const guild = await this.client.guilds.fetch(this.env.DISCORD_GUILD_ID);
+    const entries = Object.entries(settings.channels);
+
+    return Promise.all(entries.map(async ([key, id]) => {
+      if (!id) return { key, configured: false, valid: true };
+
+      try {
+        const channel = await this.client.channels.fetch(id);
+        if (!channel || !channel.isTextBased() || !('send' in channel)) {
+          return { key, id, configured: true, valid: false, error: 'Not a writable text channel' };
+        }
+
+        if ('guildId' in channel && channel.guildId !== guild.id) {
+          return { key, id, configured: true, valid: false, error: 'Channel belongs to another server' };
+        }
+
+        const me = guild.members.me ?? await guild.members.fetchMe();
+        const permissions = 'permissionsFor' in channel
+          ? channel.permissionsFor(me)
+          : null;
+        const valid = Boolean(
+          permissions?.has(PermissionFlagsBits.ViewChannel)
+          && permissions.has(PermissionFlagsBits.SendMessages)
+          && permissions.has(PermissionFlagsBits.EmbedLinks),
+        );
+
+        return {
+          key,
+          id,
+          configured: true,
+          valid,
+          name: 'name' in channel ? String(channel.name) : undefined,
+          error: valid ? undefined : 'Missing View Channel / Send Messages / Embed Links permission',
+        };
+      } catch (error: any) {
+        return { key, id, configured: true, valid: false, error: error?.message ?? 'Channel lookup failed' };
+      }
+    }));
+  }
+
+  async validateSettingsChannels(settings: RuntimeSettings) {
+    const checks = await this.channelChecks(settings);
+    const invalid = checks.filter((item) => item.configured && !item.valid);
+    if (invalid.length) {
+      throw new Error(
+        `Invalid Discord channel configuration: ${invalid.map((item) => `${item.key}: ${item.error}`).join('; ')}`,
+      );
+    }
+    return checks;
+  }
+
+  async inspect() {
+    const guild = await this.client.guilds.fetch(this.env.DISCORD_GUILD_ID);
     return {
-      incoming: this.env.DISCORD_CHANNEL_INCOMING,
-      breaking: this.env.DISCORD_CHANNEL_BREAKING,
-      ai: this.env.DISCORD_CHANNEL_AI,
-      pcHardware: this.env.DISCORD_CHANNEL_PC_HARDWARE,
-      windowsSoftware: this.env.DISCORD_CHANNEL_WINDOWS_SOFTWARE,
-      gamingTech: this.env.DISCORD_CHANNEL_GAMING_TECH,
-      cybersecurity: this.env.DISCORD_CHANNEL_CYBERSECURITY,
-      generalTech: this.env.DISCORD_CHANNEL_GENERAL_TECH,
-      videoIdeas: this.env.DISCORD_CHANNEL_VIDEO_IDEAS,
-      usedNews: this.env.DISCORD_CHANNEL_USED_NEWS,
+      bot: {
+        id: this.client.user?.id,
+        username: this.client.user?.username,
+        avatarUrl: this.client.user?.displayAvatarURL({ size: 256 }),
+      },
+      guild: {
+        id: guild.id,
+        name: guild.name,
+        iconUrl: guild.iconURL({ size: 128 }),
+      },
+      channels: await this.channelChecks(),
     };
   }
 
-  private async validateDestinations() {
-    const guild = await this.client.guilds.fetch(this.env.DISCORD_GUILD_ID);
-
-    for (const [name, id] of Object.entries(this.configuredChannels())) {
-      if (!id) continue;
-      const channel = await this.client.channels.fetch(id);
-
-      if (!channel || !channel.isTextBased() || !('send' in channel)) {
-        throw new Error(`Discord channel "${name}" (${id}) is not a writable text channel.`);
-      }
-
-      if ('guildId' in channel && channel.guildId !== guild.id) {
-        throw new Error(`Discord channel "${name}" belongs to a different server.`);
-      }
+  async applyIdentity(logo?: Buffer) {
+    if (!this.client.user) throw new Error('Discord bot user is unavailable.');
+    if (this.client.user.username !== BRAND.name) {
+      await this.client.user.setUsername(BRAND.name);
     }
+    if (logo) await this.client.user.setAvatar(logo);
+    return {
+      username: this.client.user.username,
+      avatarUrl: this.client.user.displayAvatarURL({ size: 256 }),
+    };
+  }
+
+  async sendTest(channelId?: string) {
+    const settings = this.settingsStore.get();
+    const id = channelId
+      || settings.channels.incoming
+      || settings.channels.generalTech
+      || Object.values(settings.channels).find(Boolean);
+
+    if (!id) throw new Error('Configure at least one Discord channel first.');
+    const channel = await this.getTextChannel(id);
+    if (!channel) throw new Error('Selected Discord channel is unavailable.');
+
+    await channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(BRAND.colors.primary)
+          .setAuthor({ name: `${BRAND.name} • ${BRAND.workspace}` })
+          .setTitle('NewsTech connection test')
+          .setDescription('Dashboard control, Discord permissions, and branded embeds are working.')
+          .addFields(
+            { name: 'STATUS', value: '✅ Connected', inline: true },
+            { name: 'CONTROL', value: 'Dashboard', inline: true },
+          )
+          .setFooter({ text: BRAND.signature })
+          .setTimestamp(),
+      ],
+      allowedMentions: { parse: [] },
+    });
   }
 
   private async getTextChannel(id?: string): Promise<TextChannel | null> {
@@ -84,27 +177,25 @@ export class DiscordPublisher {
   }
 
   async publish(article: ScoredArticle) {
-    if (article.blocked || article.score < this.env.NEWS_MIN_SCORE) return false;
+    const settings = this.settingsStore.get();
+    if (article.blocked || article.score < settings.newsMinScore) return false;
 
-    const isBreaking = article.breaking && article.score >= this.env.BREAKING_MIN_SCORE;
+    const isBreaking = article.breaking && article.score >= settings.breakingMinScore;
     const destination = isBreaking
-      ? this.env.DISCORD_CHANNEL_BREAKING
-        || channelIdForCategory(article.category, this.env)
-        || this.env.DISCORD_CHANNEL_INCOMING
-      : channelIdForCategory(article.category, this.env)
-        || this.env.DISCORD_CHANNEL_INCOMING;
+      ? settings.channels.breaking
+        || channelIdForCategory(article.category, settings)
+        || settings.channels.incoming
+      : channelIdForCategory(article.category, settings)
+        || settings.channels.incoming;
 
-    if (this.env.DRY_RUN) {
-      console.log(
-        '[NewsTech:DRY-RUN]',
-        JSON.stringify({
-          score: article.score,
-          category: article.category,
-          title: article.title,
-          destination,
-          reasons: article.reasons,
-        }),
-      );
+    if (settings.dryRun) {
+      console.log('[NewsTech:DRY-RUN]', JSON.stringify({
+        score: article.score,
+        category: article.category,
+        title: article.title,
+        destination,
+        reasons: article.reasons,
+      }));
       return true;
     }
 

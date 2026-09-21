@@ -52,6 +52,15 @@ export class StateStore {
     return Boolean(this.state.seen[fingerprint]);
   }
 
+  count(): number {
+    return Object.keys(this.state.seen).length;
+  }
+
+  async clear() {
+    this.state = { seen: {} };
+    await this.save();
+  }
+
   async mark(fingerprint: string, title: string, url: string) {
     this.state.seen[fingerprint] = {
       seenAt: new Date().toISOString(),
