@@ -65,7 +65,9 @@ describe('Discord workflow buttons', () => {
     expect(mock.deferReply).toHaveBeenCalledWith({ ephemeral: true });
     expect(mock.fetch).toHaveBeenCalledWith('111111111111111');
     expect(mock.send).toHaveBeenCalledOnce();
-    expect(mock.send.mock.calls[0][0].content).toContain('Video Idea');
+    expect(mock.send).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('Video Idea') }),
+    );
     expect(mock.edit).toHaveBeenCalledOnce();
     expect(mock.editReply).toHaveBeenCalledWith('💡 Saved to video ideas.');
   });
@@ -75,7 +77,9 @@ describe('Discord workflow buttons', () => {
     await handleWorkflowButton(mock.value, settings());
 
     expect(mock.fetch).toHaveBeenCalledWith('222222222222222');
-    expect(mock.send.mock.calls[0][0].content).toContain('Used');
+    expect(mock.send).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('Used') }),
+    );
     expect(mock.editReply).toHaveBeenCalledWith('✅ Marked as used.');
   });
 
