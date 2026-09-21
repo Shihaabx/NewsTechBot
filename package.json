@@ -13,7 +13,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test && npm run build && node --check public/app.js"
+    "check": "npm run typecheck && npm run test && npm run build && node --check public/app.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "discord.js": "^14.21.0",
@@ -28,6 +29,9 @@
     "@types/node": "^22.15.30",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@playwright/test": "^1.55.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4"
   }
 }
