@@ -462,6 +462,15 @@ async function applyIdentity() {
 
 async function bootstrap() {
   try {
+    if (!state.token) {
+      const authResponse = await fetch('/api/auth', { cache:'no-store' });
+      const authState = await authResponse.json();
+      if (authState.required) {
+        $('loginOverlay').classList.remove('hidden');
+        return;
+      }
+    }
+
     const data = await api('/bootstrap');
     state.bootstrap = data;
     state.sources = data.sources || [];
@@ -546,7 +555,7 @@ function bindEvents() {
 
   $('saveFiltersBtn').addEventListener('click', saveFilters);
   $('saveDiscordBtn').addEventListener('click', () => saveSettings('Discord channels saved'));
-  $('refreshDiscordBtn').addEventListener('click', refreshDiscord);
+  $('refreshDiscordBtn').addEventListener('click', () => refreshDiscord(false));
   $('sendTestBtn').addEventListener('click', sendTest);
   $('saveSystemBtn').addEventListener('click', () => saveSettings('System settings saved'));
   $('newsMinScore').addEventListener('input', renderScoreNeedle);
