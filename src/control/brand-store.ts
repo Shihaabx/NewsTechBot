@@ -4,6 +4,21 @@ import path from 'node:path';
 const allowedMimes = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const maxBytes = 2 * 1024 * 1024;
 
+function matchesMime(mime: string, data: Buffer) {
+  if (mime === 'image/png') {
+    return data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+  }
+  if (mime === 'image/jpeg') {
+    return data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  }
+  if (mime === 'image/webp') {
+    return data.length >= 12
+      && data.subarray(0, 4).toString('ascii') === 'RIFF'
+      && data.subarray(8, 12).toString('ascii') === 'WEBP';
+  }
+  return false;
+}
+
 interface StoredLogo {
   mime: string;
   base64: string;
@@ -30,6 +45,9 @@ export class BrandStore {
     const data = Buffer.from(base64, 'base64');
     if (data.length === 0 || data.length > maxBytes) {
       throw new Error('Logo must be between 1 byte and 2 MB.');
+    }
+    if (!matchesMime(mime, data)) {
+      throw new Error('Uploaded logo bytes do not match the selected image type.');
     }
 
     await fs.mkdir(path.dirname(this.filePath), { recursive: true });
