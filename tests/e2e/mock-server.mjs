@@ -111,6 +111,8 @@ function addEvent(level, message, detail) {
 
 app.get('/health', (_req, res) => res.json({ ok: true, product: 'NewsTech' }));
 
+app.get('/api/auth', (_req, res) => res.json({ required: true }));
+
 app.get('/api/brand/logo', (_req, res) => {
   if (customLogo) {
     res.type(customLogo.mime).send(Buffer.from(customLogo.base64, 'base64'));
