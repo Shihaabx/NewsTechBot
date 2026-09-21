@@ -1,0 +1,26 @@
+# NewsTechBot only reads sources YOU approve here.
+# Keep enabled=false until you confirm the feed URL is correct.
+sources:
+  - id: nvidia-newsroom
+    name: NVIDIA Newsroom
+    url: https://nvidianews.nvidia.com/rss.xml
+    category: pc-hardware
+    trust: 100
+    enabled: false
+    official: true
+
+  - id: microsoft-blogs
+    name: Microsoft Blogs
+    url: https://blogs.microsoft.com/feed/
+    category: windows-software
+    trust: 100
+    enabled: false
+    official: true
+
+  - id: openai-news
+    name: OpenAI News
+    url: https://openai.com/news/rss.xml
+    category: ai
+    trust: 100
+    enabled: false
+    official: true
