@@ -324,6 +324,7 @@ async function toggleSource(id, enabled) {
       body:JSON.stringify({...source, enabled})
     });
     renderSources();
+    await refreshStatus();
     toast((enabled ? 'Enabled ' : 'Disabled ') + source.name);
   } catch (error) {
     toast(error.message,'error');
@@ -356,6 +357,7 @@ async function deleteSource(id) {
   try {
     state.sources = await api('/sources/' + encodeURIComponent(id),{method:'DELETE'});
     renderSources();
+    await refreshStatus();
     toast('Source deleted');
   } catch (error) {
     toast(error.message,'error');
@@ -516,6 +518,7 @@ function bindEvents() {
       });
       $('sourceModal').classList.add('hidden');
       renderSources();
+      await refreshStatus();
       toast(id ? 'Source updated' : 'Source added');
     } catch (error) {
       toast(error.message,'error');
