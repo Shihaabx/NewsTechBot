@@ -6,7 +6,7 @@ import {
 import { SettingsStore } from '../control/settings.js';
 import { workflowButtons } from './publisher.js';
 
-function isAuthorized(userId: string, settingsStore: SettingsStore) {
+export function isWorkflowAuthorized(userId: string, settingsStore: SettingsStore) {
   const ids = settingsStore.get().allowedUserIds;
   return ids.length === 0 || ids.includes(userId);
 }
@@ -20,12 +20,12 @@ export function attachInteractionHandler(
     if (!interaction.customId.startsWith('newstech:')) return;
 
     try {
-      if (!isAuthorized(interaction.user.id, settingsStore)) {
+      if (!isWorkflowAuthorized(interaction.user.id, settingsStore)) {
         await interaction.reply({ content: '⛔ This NewsTech control is private.', ephemeral: true });
         return;
       }
 
-      await handleButton(interaction, settingsStore);
+      await handleWorkflowButton(interaction, settingsStore);
     } catch (error) {
       console.error('[NewsTech] Discord workflow interaction failed', error);
       if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
@@ -37,7 +37,7 @@ export function attachInteractionHandler(
   });
 }
 
-async function handleButton(interaction: ButtonInteraction, settingsStore: SettingsStore) {
+export async function handleWorkflowButton(interaction: ButtonInteraction, settingsStore: SettingsStore) {
   const action = interaction.customId === 'newstech:idea'
     ? 'idea'
     : interaction.customId === 'newstech:used'
