@@ -101,6 +101,10 @@ export function createDashboardApp(deps: DashboardDeps) {
     res.json({ ok: true, product: BRAND.name });
   });
 
+  app.get('/api/auth', (_req, res) => {
+    res.json({ required: Boolean(deps.env.DASHBOARD_TOKEN) });
+  });
+
   app.get('/api/brand/logo', async (_req, res) => {
     try {
       const custom = await deps.brandStore.get();
