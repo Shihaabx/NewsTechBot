@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import path from 'node:path';
 import { loadRules, loadSources } from './config/load.js';
 import { loadEnv } from './config/env.js';

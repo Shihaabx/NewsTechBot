@@ -6,7 +6,7 @@ It watches only sources you approve, removes duplicates/noise, rejects phone-foc
 
 > The goal is not “more news.” The goal is **fewer, better stories that can become useful Juraa Tech videos**.
 
-## NewsTech v0.2
+## NewsTech v0.2.1
 
 - transparent 0–100 story scoring
 - stricter relevance gate so generic corporate posts do not flood Discord
@@ -18,6 +18,9 @@ It watches only sources you approve, removes duplicates/noise, rejects phone-foc
 - branded Discord embeds using Juraa orange `#FF6A00`
 - private workflow buttons: **💡 Video Idea** and **✅ Used**
 - optional Discord user allowlist
+- startup validation for Discord server/channel IDs
+- automatic local `.env` loading
+- corrupted-state backup/recovery
 - runtime `/status` telemetry
 - Docker-ready
 - no paid AI API required
@@ -71,6 +74,8 @@ npm run check
 npm run dev
 ```
 
+NewsTech loads `.env` automatically. Invalid IDs, missing required values, or configured channels from the wrong Discord server fail fast at startup with a clear error.
+
 ### Docker
 
 ```bash
@@ -114,7 +119,9 @@ The rules are editable in `config/rules.yml`. This keeps the first version free 
 - old backlog is limited
 - rejected stories are remembered so they are not rescored forever
 - publishable stories are marked seen **only after Discord confirms delivery**
+- configured Discord destinations are validated before polling begins
 - state writes use atomic rename
+- a corrupted state file is backed up before a clean state is created
 - duplicate state is pruned after 30 days
 - secrets stay in `.env`
 - startup configuration is validated before login

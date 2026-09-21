@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- load local `.env` automatically
+- validate all configured Discord channels at startup
+- reject channel IDs that point to another Discord server
+- make workflow button states final and consistent
+- defer button interactions before network work to avoid Discord interaction timeouts
+- back up and recover from a corrupted local state file
+
 ## 0.2.0
 
 - centralized NewsTech/Juraa Tech brand identity

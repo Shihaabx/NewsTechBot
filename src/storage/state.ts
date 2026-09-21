@@ -11,17 +11,40 @@ interface StateFile {
   seen: Record<string, StoredItem>;
 }
 
+function isStateFile(value: unknown): value is StateFile {
+  if (!value || typeof value !== 'object') return false;
+  const seen = (value as { seen?: unknown }).seen;
+  return Boolean(seen && typeof seen === 'object' && !Array.isArray(seen));
+}
+
 export class StateStore {
   private state: StateFile = { seen: {} };
+
   constructor(private readonly filePath: string) {}
 
   async load() {
+    let raw: string;
+
     try {
-      this.state = JSON.parse(await fs.readFile(this.filePath, 'utf8')) as StateFile;
+      raw = await fs.readFile(this.filePath, 'utf8');
     } catch (error: any) {
       if (error?.code !== 'ENOENT') throw error;
       await this.save();
+      return;
     }
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isStateFile(parsed)) throw new Error('state file has an invalid shape');
+      this.state = parsed;
+    } catch (error) {
+      const backupPath = `${this.filePath}.corrupt-${Date.now()}.json`;
+      console.error(`[NewsTech] Invalid state file. Backing it up to ${backupPath}.`, error);
+      await fs.rename(this.filePath, backupPath);
+      this.state = { seen: {} };
+      await this.save();
+    }
+
     this.prune();
   }
 
@@ -30,7 +53,11 @@ export class StateStore {
   }
 
   async mark(fingerprint: string, title: string, url: string) {
-    this.state.seen[fingerprint] = { seenAt: new Date().toISOString(), title, url };
+    this.state.seen[fingerprint] = {
+      seenAt: new Date().toISOString(),
+      title,
+      url,
+    };
     this.prune();
     await this.save();
   }

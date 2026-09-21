@@ -110,18 +110,20 @@ async function handleButton(interaction: ButtonInteraction, env: AppEnv) {
 
   if (!action) return;
 
+  await interaction.deferReply({ ephemeral: true });
+
   const targetId = action === 'idea'
     ? env.DISCORD_CHANNEL_VIDEO_IDEAS
     : env.DISCORD_CHANNEL_USED_NEWS;
 
   if (!targetId) {
-    await interaction.reply({ content: '⚠️ Target channel is not configured.', ephemeral: true });
+    await interaction.editReply('⚠️ Target channel is not configured.');
     return;
   }
 
   const target = await interaction.client.channels.fetch(targetId);
   if (!target?.isTextBased() || !('send' in target)) {
-    await interaction.reply({ content: '⚠️ Target channel is unavailable.', ephemeral: true });
+    await interaction.editReply('⚠️ Target channel is unavailable.');
     return;
   }
 
@@ -133,10 +135,9 @@ async function handleButton(interaction: ButtonInteraction, env: AppEnv) {
     allowedMentions: { users: [interaction.user.id] },
   });
 
-  await interaction.message.edit({ components: [workflowButtons(action)] });
-
-  await interaction.reply({
-    content: action === 'idea' ? '💡 Saved to video ideas.' : '✅ Marked as used.',
-    ephemeral: true,
+  await interaction.message.edit({
+    components: [workflowButtons(action)],
   });
+
+  await interaction.editReply(action === 'idea' ? '💡 Saved to video ideas.' : '✅ Marked as used.');
 }

@@ -12,24 +12,24 @@ import type { AppEnv } from '../config/env.js';
 import { BRAND, getCategoryMeta, getPriorityLabel } from '../brand.js';
 import { channelIdForCategory } from './channels.js';
 
-function workflowButtons(disabled: 'idea' | 'used' | null = null) {
+export type WorkflowState = 'none' | 'idea' | 'used';
+
+export function workflowButtons(state: WorkflowState = 'none') {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('newstech:idea')
       .setLabel('Video Idea')
       .setEmoji('💡')
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled === 'idea'),
+      .setDisabled(state === 'idea' || state === 'used'),
     new ButtonBuilder()
       .setCustomId('newstech:used')
       .setLabel('Used')
       .setEmoji('✅')
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled === 'used'),
+      .setDisabled(state === 'used'),
   );
 }
-
-export { workflowButtons };
 
 export class DiscordPublisher {
   readonly client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -38,10 +38,43 @@ export class DiscordPublisher {
 
   async start() {
     await this.client.login(this.env.DISCORD_BOT_TOKEN);
+    await this.validateDestinations();
   }
 
   async stop() {
     this.client.destroy();
+  }
+
+  private configuredChannels() {
+    return {
+      incoming: this.env.DISCORD_CHANNEL_INCOMING,
+      breaking: this.env.DISCORD_CHANNEL_BREAKING,
+      ai: this.env.DISCORD_CHANNEL_AI,
+      pcHardware: this.env.DISCORD_CHANNEL_PC_HARDWARE,
+      windowsSoftware: this.env.DISCORD_CHANNEL_WINDOWS_SOFTWARE,
+      gamingTech: this.env.DISCORD_CHANNEL_GAMING_TECH,
+      cybersecurity: this.env.DISCORD_CHANNEL_CYBERSECURITY,
+      generalTech: this.env.DISCORD_CHANNEL_GENERAL_TECH,
+      videoIdeas: this.env.DISCORD_CHANNEL_VIDEO_IDEAS,
+      usedNews: this.env.DISCORD_CHANNEL_USED_NEWS,
+    };
+  }
+
+  private async validateDestinations() {
+    const guild = await this.client.guilds.fetch(this.env.DISCORD_GUILD_ID);
+
+    for (const [name, id] of Object.entries(this.configuredChannels())) {
+      if (!id) continue;
+      const channel = await this.client.channels.fetch(id);
+
+      if (!channel || !channel.isTextBased() || !('send' in channel)) {
+        throw new Error(`Discord channel "${name}" (${id}) is not a writable text channel.`);
+      }
+
+      if ('guildId' in channel && channel.guildId !== guild.id) {
+        throw new Error(`Discord channel "${name}" belongs to a different server.`);
+      }
+    }
   }
 
   private async getTextChannel(id?: string): Promise<TextChannel | null> {
