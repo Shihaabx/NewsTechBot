@@ -44,6 +44,11 @@ test('user can operate Discord, system, brand and session controls', async ({ pa
   await page.locator('#breakingMinScore').fill('80');
   await page.locator('#saveSystemBtn').click();
   await expect(page.locator('#toast')).toContainText('greater than or equal');
+  // Chrome logs the intentionally rejected HTTP 400 as a console network error.
+  // The validation toast above proves the UI handled it correctly.
+  while (errors.some((entry) => entry.includes('status of 400'))) {
+    errors.splice(errors.findIndex((entry) => entry.includes('status of 400')), 1);
+  }
   await page.locator('#newsMinScore').fill('62');
   await page.locator('#breakingMinScore').fill('86');
   await page.locator('#saveSystemBtn').click();
