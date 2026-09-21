@@ -61,9 +61,7 @@ export interface DashboardDeps {
   onSettingsChanged: () => void;
 }
 
-export async function startDashboard(deps: DashboardDeps) {
-  if (!deps.env.DASHBOARD_ENABLED) return null;
-
+export function createDashboardApp(deps: DashboardDeps) {
   const app = express();
   const publicDir = path.resolve('public');
   const defaultLogoPng = path.join(publicDir, 'assets', 'newstech-logo.png');
@@ -380,6 +378,13 @@ export async function startDashboard(deps: DashboardDeps) {
   app.use(express.static(publicDir, { index: false, maxAge: '1h' }));
   app.get('*', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
+  return app;
+}
+
+export async function startDashboard(deps: DashboardDeps) {
+  if (!deps.env.DASHBOARD_ENABLED) return null;
+
+  const app = createDashboardApp(deps);
   const server = app.listen(deps.env.DASHBOARD_PORT, deps.env.DASHBOARD_HOST, () => {
     console.log(
       `[NewsTech] Dashboard: http://${deps.env.DASHBOARD_HOST}:${deps.env.DASHBOARD_PORT}`,
