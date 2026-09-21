@@ -456,9 +456,9 @@ async function resetLogo() {
 async function applyIdentity() {
   try {
     const result = await api('/brand/apply',{method:'POST'});
-    toast('Discord bot identity updated');
-    await refreshDiscord();
+    await refreshDiscord(true);
     if (result.avatarUrl) $('discordAvatar').src = result.avatarUrl;
+    toast('Discord bot identity updated');
   } catch (error) {
     toast(error.message,'error');
   }
