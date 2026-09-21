@@ -1,18 +1,26 @@
-# Transparent rule-based curation. No paid AI is required.
+# NewsTech v0.2 curation rules.
+# Goal: valuable stories, not a raw firehose.
+
 blocked_topics:
   - iphone
   - ipad
   - ios
-  - android phone
+  - android
   - smartphone
+  - phone
   - galaxy phone
   - pixel phone
+  - mobile phone
+  - handset
 
 high_value_terms:
   - release
+  - released
   - launched
+  - launches
   - announces
   - announcement
+  - unveils
   - new gpu
   - graphics card
   - geforce
@@ -25,12 +33,15 @@ high_value_terms:
   - windows 11
   - artificial intelligence
   - ai model
+  - new model
   - open source
   - benchmark
   - price cut
   - acquisition
   - antitrust
   - outage
+  - end of support
+  - recall
 
 breaking_terms:
   - zero-day
@@ -39,9 +50,9 @@ breaking_terms:
   - major outage
   - emergency update
   - data breach
-  - launches
-  - unveils
+  - launches today
   - released today
+  - security incident
 
 low_value_terms:
   - giveaway
@@ -51,15 +62,18 @@ low_value_terms:
   - wallpaper
   - horoscope
   - celebrity
+  - sweepstakes
+  - gift guide
+  - affiliate
 
 categories:
   ai:
-    terms: [openai, chatgpt, anthropic, claude, gemini, llm, ai model, artificial intelligence, machine learning]
+    terms: [openai, chatgpt, anthropic, claude, gemini, llm, ai model, artificial intelligence, machine learning, generative ai, inference]
   pc-hardware:
-    terms: [nvidia, geforce, rtx, amd, ryzen, radeon, intel, cpu, gpu, graphics card, processor, motherboard, ram, ssd]
+    terms: [nvidia, geforce, rtx, amd, ryzen, radeon, intel, cpu, gpu, graphics card, processor, motherboard, ram, ssd, chipset]
   windows-software:
-    terms: [windows, microsoft, powershell, edge, software, app, update, driver]
+    terms: [windows, microsoft, powershell, edge, software, app, update, driver, copilot]
   gaming-tech:
-    terms: [steam, pc gaming, game engine, unreal engine, unity, directx, gaming gpu, gaming hardware]
+    terms: [steam, pc gaming, game engine, unreal engine, unity, directx, gaming gpu, gaming hardware, dlss, fsr]
   cybersecurity:
-    terms: [cve, vulnerability, exploit, malware, ransomware, breach, phishing, zero-day, security patch]
+    terms: [cve, vulnerability, exploit, malware, ransomware, breach, phishing, zero-day, security patch, cyberattack]

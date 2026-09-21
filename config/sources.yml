@@ -1,16 +1,16 @@
-# NewsTechBot only reads sources YOU approve here.
-# Keep enabled=false until you confirm the feed URL is correct.
+# NewsTech reads only sources approved here.
+# Keep a source disabled until its RSS/Atom endpoint is verified.
 sources:
   - id: nvidia-newsroom
     name: NVIDIA Newsroom
-    url: https://nvidianews.nvidia.com/rss.xml
+    url: https://nvidianews.nvidia.com/releases.xml
     category: pc-hardware
     trust: 100
     enabled: false
     official: true
 
-  - id: microsoft-blogs
-    name: Microsoft Blogs
+  - id: microsoft-official-blog
+    name: Microsoft Official Blog
     url: https://blogs.microsoft.com/feed/
     category: windows-software
     trust: 100

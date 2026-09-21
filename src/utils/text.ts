@@ -10,18 +10,25 @@ export function normalizeText(value: string): string {
 }
 
 export function containsTerm(haystack: string, term: string): boolean {
-  return normalizeText(haystack).includes(normalizeText(term));
+  const normalizedHaystack = normalizeText(haystack);
+  const normalizedTerm = normalizeText(term);
+  if (!normalizedTerm) return false;
+  return ` ${normalizedHaystack} `.includes(` ${normalizedTerm} `);
 }
 
 export function articleFingerprint(title: string, url: string): string {
-  const canonical = `${normalizeText(title)}|${canonicalizeUrl(url)}`;
-  return crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 24);
+  const normalizedTitle = normalizeText(title);
+  const identity = normalizedTitle.length >= 12 ? normalizedTitle : canonicalizeUrl(url);
+  return crypto.createHash('sha256').update(identity).digest('hex').slice(0, 24);
 }
 
 export function canonicalizeUrl(value: string): string {
   try {
     const url = new URL(value);
-    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref','source'].forEach((key) => url.searchParams.delete(key));
+    [
+      'utm_source','utm_medium','utm_campaign','utm_term','utm_content',
+      'ref','source','fbclid','gclid',
+    ].forEach((key) => url.searchParams.delete(key));
     url.hash = '';
     return url.toString().replace(/\/$/, '');
   } catch {
