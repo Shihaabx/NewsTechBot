@@ -236,12 +236,16 @@ function renderScoreNeedle() {
 }
 
 async function saveSettings(message='Settings saved') {
-  const saved = await api('/settings', { method:'PUT', body:JSON.stringify(collectSettings()) });
-  state.settings = saved;
-  renderSettings();
-  renderStatus({ status: state.bootstrap.status, settings: saved, seenCount: state.bootstrap.seenCount });
-  await refreshDiscord(true);
-  toast(message);
+  try {
+    const saved = await api('/settings', { method:'PUT', body:JSON.stringify(collectSettings()) });
+    state.settings = saved;
+    renderSettings();
+    renderStatus({ status: state.bootstrap.status, settings: saved, seenCount: state.bootstrap.seenCount });
+    await refreshDiscord(true);
+    toast(message);
+  } catch (error) {
+    toast(error.message || 'Could not save settings', 'error');
+  }
 }
 
 async function refreshStatus() {
