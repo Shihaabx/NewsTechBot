@@ -1,4 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -78,7 +79,7 @@ export async function startDashboard(deps: DashboardDeps) {
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
     );
     next();
   });
@@ -88,7 +89,10 @@ export async function startDashboard(deps: DashboardDeps) {
     if (!token) return next();
 
     const supplied = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
-    if (supplied !== token) {
+    const left = Buffer.from(supplied);
+    const right = Buffer.from(token);
+    const valid = left.length === right.length && crypto.timingSafeEqual(left, right);
+    if (!valid) {
       res.status(401).json({ error: 'Dashboard authentication required.' });
       return;
     }
@@ -223,6 +227,7 @@ export async function startDashboard(deps: DashboardDeps) {
       const source = sourceSchema.parse({ ...input, id });
       const next = await saveSources(deps.env.SOURCES_PATH, [...current, source]);
       deps.events.add('success', `Source added: ${source.name}`);
+      deps.onSettingsChanged();
       res.status(201).json(next);
     } catch (error) {
       res.status(400).json({ error: errorMessage(error) });
@@ -242,6 +247,7 @@ export async function startDashboard(deps: DashboardDeps) {
       current[index] = updated;
       const next = await saveSources(deps.env.SOURCES_PATH, current);
       deps.events.add('success', `Source updated: ${updated.name}`);
+      deps.onSettingsChanged();
       res.json(next);
     } catch (error) {
       res.status(400).json({ error: errorMessage(error) });
@@ -261,6 +267,7 @@ export async function startDashboard(deps: DashboardDeps) {
         current.filter((item) => item.id !== req.params.id),
       );
       deps.events.add('warning', `Source deleted: ${source.name}`);
+      deps.onSettingsChanged();
       res.json(next);
     } catch (error) {
       res.status(400).json({ error: errorMessage(error) });
@@ -364,6 +371,10 @@ export async function startDashboard(deps: DashboardDeps) {
       deps.events.add('error', 'Could not apply Discord identity', errorMessage(error));
       res.status(400).json({ error: errorMessage(error) });
     }
+  });
+
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Unknown NewsTech API endpoint.' });
   });
 
   app.use(express.static(publicDir, { index: false, maxAge: '1h' }));
