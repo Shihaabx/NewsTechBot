@@ -1,0 +1,65 @@
+# Transparent rule-based curation. No paid AI is required.
+blocked_topics:
+  - iphone
+  - ipad
+  - ios
+  - android phone
+  - smartphone
+  - galaxy phone
+  - pixel phone
+
+high_value_terms:
+  - release
+  - launched
+  - announces
+  - announcement
+  - new gpu
+  - graphics card
+  - geforce
+  - rtx
+  - driver
+  - vulnerability
+  - exploit
+  - security update
+  - windows update
+  - windows 11
+  - artificial intelligence
+  - ai model
+  - open source
+  - benchmark
+  - price cut
+  - acquisition
+  - antitrust
+  - outage
+
+breaking_terms:
+  - zero-day
+  - actively exploited
+  - critical vulnerability
+  - major outage
+  - emergency update
+  - data breach
+  - launches
+  - unveils
+  - released today
+
+low_value_terms:
+  - giveaway
+  - sponsored
+  - deal of the day
+  - coupon
+  - wallpaper
+  - horoscope
+  - celebrity
+
+categories:
+  ai:
+    terms: [openai, chatgpt, anthropic, claude, gemini, llm, ai model, artificial intelligence, machine learning]
+  pc-hardware:
+    terms: [nvidia, geforce, rtx, amd, ryzen, radeon, intel, cpu, gpu, graphics card, processor, motherboard, ram, ssd]
+  windows-software:
+    terms: [windows, microsoft, powershell, edge, software, app, update, driver]
+  gaming-tech:
+    terms: [steam, pc gaming, game engine, unreal engine, unity, directx, gaming gpu, gaming hardware]
+  cybersecurity:
+    terms: [cve, vulnerability, exploit, malware, ransomware, breach, phishing, zero-day, security patch]
