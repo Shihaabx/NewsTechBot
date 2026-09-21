@@ -174,6 +174,8 @@ function renderSettings() {
   $('maxAge').value = s.maxArticleAgeHours;
   $('newsMinScore').value = s.newsMinScore;
   $('breakingMinScore').value = s.breakingMinScore;
+  $('allowedUsers').value = (s.allowedUserIds || []).join('\n');
+  $('dryRun').checked = Boolean(s.dryRun);
   renderScoreNeedle();
 
   $('channelGrid').innerHTML = channelMeta.map(([key,title,desc]) => `
@@ -217,6 +219,8 @@ function collectSettings() {
 
   return {
     paused: Boolean(state.settings?.paused),
+    dryRun: $('dryRun').checked,
+    allowedUserIds: lines($('allowedUsers').value),
     pollIntervalMinutes: Number($('pollInterval').value),
     maxItemsPerSource: Number($('maxItems').value),
     maxArticleAgeHours: Number($('maxAge').value),
