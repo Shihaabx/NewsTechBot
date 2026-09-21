@@ -240,8 +240,8 @@ async function saveSettings(message='Settings saved') {
   state.settings = saved;
   renderSettings();
   renderStatus({ status: state.bootstrap.status, settings: saved, seenCount: state.bootstrap.seenCount });
+  await refreshDiscord(true);
   toast(message);
-  await refreshDiscord();
 }
 
 async function refreshStatus() {
@@ -254,11 +254,11 @@ async function refreshStatus() {
   }
 }
 
-async function refreshDiscord() {
+async function refreshDiscord(silent=false) {
   try {
     const discord = await api('/discord');
     renderDiscord(discord);
-    toast('Discord connection refreshed');
+    if (!silent) toast('Discord connection refreshed');
   } catch (error) {
     toast(error.message,'error');
   }
