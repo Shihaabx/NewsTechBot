@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+- added a full visual NewsTech Control Dashboard
+- replaced Discord slash-command administration with Dashboard UI/UX
+- added Overview health metrics, activity events, Poll Now, pause/resume, and Discord test
+- added source CRUD, enable/disable toggles, trust/category/official controls, and feed testing
+- added complete filter/rule editing
+- added Discord channel mapping and permission validation
+- added runtime control for polling, age limits, score thresholds, Dry Run, and workflow user allowlist
+- added duplicate-history maintenance controls
+- added Brand page with logo upload/reset and Discord bot identity application
+- added bundled NewsTech SVG + PNG identity assets
+- added dashboard API authentication and security headers
+- added constant-time dashboard token comparison
+- added image signature validation for uploaded logos
+- added persisted runtime settings separate from secrets
+- added dashboard JavaScript syntax validation to CI
+- added runtime-settings tests
+
 ## 0.2.1
 
 - load local `.env` automatically
@@ -23,6 +42,5 @@
 - fixed delivery reliability: a story is only marked seen after successful Discord publication
 - added validated environment configuration with clear startup errors
 - added optional private user allowlist for workflow controls
-- added richer /status telemetry
-- disables a workflow button after it is used to reduce accidental duplicate actions
+- added richer runtime telemetry
 - expanded tests and CI build validation
