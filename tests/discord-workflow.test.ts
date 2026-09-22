@@ -52,8 +52,8 @@ function interaction(customId: string) {
 }
 
 describe('Discord workflow buttons', () => {
-  it('authorizes everyone when the allowlist is empty and only listed users otherwise', () => {
-    expect(isWorkflowAuthorized('1', settings())).toBe(true);
+  it('denies everyone when the allowlist is empty and only allows listed users otherwise', () => {
+    expect(isWorkflowAuthorized('1', settings())).toBe(false);
     expect(isWorkflowAuthorized('999', settings({ allowedUserIds: ['999'] }))).toBe(true);
     expect(isWorkflowAuthorized('123', settings({ allowedUserIds: ['999'] }))).toBe(false);
   });
