@@ -8,7 +8,7 @@ import { workflowButtons } from './publisher.js';
 
 export function isWorkflowAuthorized(userId: string, settingsStore: SettingsStore) {
   const ids = settingsStore.get().allowedUserIds;
-  return ids.length === 0 || ids.includes(userId);
+  return ids.length > 0 && ids.includes(userId);
 }
 
 export function attachInteractionHandler(
@@ -21,7 +21,13 @@ export function attachInteractionHandler(
 
     try {
       if (!isWorkflowAuthorized(interaction.user.id, settingsStore)) {
-        await interaction.reply({ content: '⛔ This NewsTech control is private.', ephemeral: true });
+        const hasAllowlist = settingsStore.get().allowedUserIds.length > 0;
+        await interaction.reply({
+          content: hasAllowlist
+            ? '⛔ This NewsTech control is private.'
+            : '🔒 NewsTech workflow controls are locked until an allowed Discord user ID is configured in the Dashboard.',
+          ephemeral: true,
+        });
         return;
       }
 
