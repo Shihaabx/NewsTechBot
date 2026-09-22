@@ -6,7 +6,7 @@ sources:
     url: https://nvidianews.nvidia.com/releases.xml
     category: pc-hardware
     trust: 100
-    enabled: false
+    enabled: true
     official: true
 
   - id: microsoft-official-blog
@@ -14,7 +14,7 @@ sources:
     url: https://blogs.microsoft.com/feed/
     category: windows-software
     trust: 100
-    enabled: false
+    enabled: true
     official: true
 
   - id: openai-news
@@ -22,5 +22,5 @@ sources:
     url: https://openai.com/news/rss.xml
     category: ai
     trust: 100
-    enabled: false
+    enabled: true
     official: true
