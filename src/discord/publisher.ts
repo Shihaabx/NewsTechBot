@@ -196,7 +196,9 @@ export class DiscordPublisher {
         destination,
         reasons: article.reasons,
       }));
-      return true;
+      // Preview only: do not report success, so the poller will NOT mark this story as seen.
+      // This lets the same story publish normally after Dry Run is turned off.
+      return false;
     }
 
     const channel = await this.getTextChannel(destination);
