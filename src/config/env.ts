@@ -29,6 +29,7 @@ const envSchema = z.object({
   DATA_PATH: z.string().min(1).default('./data/state.json'),
   SETTINGS_PATH: z.string().min(1).default('./data/settings.json'),
   BRAND_LOGO_PATH: z.string().min(1).default('./data/brand-logo.json'),
+  INBOX_PATH: z.string().min(1).default('./data/inbox.json'),
   SOURCES_PATH: z.string().min(1).default('./config/sources.yml'),
   RULES_PATH: z.string().min(1).default('./config/rules.yml'),
   DRY_RUN: boolString.default('false'),
