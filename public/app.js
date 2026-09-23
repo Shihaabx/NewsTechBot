@@ -2,6 +2,7 @@ const state = {
   token: sessionStorage.getItem('newstech-token') || '',
   bootstrap: null,
   sources: [],
+  inbox: { items: [], counts: {pending:0, filtered:0, published:0, rejected:0} },
   rules: null,
   settings: null,
   discord: null,
@@ -67,10 +68,11 @@ function setView(name) {
   $$('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === name));
   $$('.view').forEach((view) => view.classList.toggle('active', view.id === 'view-' + name));
   const label = {
-    overview:'Overview', sources:'Sources', filters:'Filters',
+    overview:'Overview', inbox:'News Inbox', sources:'Sources', filters:'Filters',
     discord:'Discord', system:'System', brand:'Brand'
   }[name];
   $('pageTitle').textContent = label || 'NewsTech';
+  if (name === 'inbox') void refreshInbox(true);
 }
 
 function lines(value) {
@@ -122,6 +124,95 @@ function renderEvents(events=[]) {
         <time>${escapeHtml(formatRelative(event.at))}</time>
       </div>`).join('')
     : '<div class="event-item"><i class="event-bullet"></i><div><strong>No activity yet</strong><small>NewsTech events will appear here.</small></div></div>';
+}
+
+
+function safeNewsUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['https:', 'http:'].includes(url.protocol) ? url.href : '#';
+  } catch { return '#'; }
+}
+
+function renderInbox() {
+  const inbox = state.inbox || { items: [], counts: {} };
+  const counts = inbox.counts || {};
+  const stats = [['pending','Awaiting review'],['filtered','Filtered'],['published','Published'],['rejected','Rejected']];
+  $('inboxMetrics').innerHTML = stats.map(([key, label]) =>
+    '<article class="inbox-stat ' + key + '"><span>' + label + '</span><strong>' +
+    Number(counts[key] || 0) + '</strong></article>'
+  ).join('');
+
+  const dry = Boolean(state.settings?.dryRun);
+  $('inboxMode').textContent = dry
+    ? 'Dry Run active: no Discord messages will be sent'
+    : state.settings?.reviewBeforePublish !== false
+      ? 'Manual review active: approve stories here before they reach Discord'
+      : 'Auto-publish active: eligible stories are posted immediately';
+
+  const term = $('inboxSearch').value.trim().toLowerCase();
+  const filter = $('inboxStatus').value;
+  const items = (inbox.items || []).filter(({ article, status }) =>
+    (filter === 'all' || status === filter) &&
+    (!term || [article.title, article.summary, article.source?.name, article.category]
+      .some((value) => String(value || '').toLowerCase().includes(term)))
+  );
+  $('inboxList').innerHTML = items.length ? items.map(({ id, article, status, reasons, receivedAt }) => {
+    const url = safeNewsUrl(article.url);
+    const source = escapeHtml(article.source?.name || 'Unknown source');
+    const title = escapeHtml(article.title);
+    const cat = escapeHtml(categories.find(([key]) => key === article.category)?.[1] || article.category);
+    const description = escapeHtml(article.summary || 'Open the source to read the full story.');
+    const reasonTags = (reasons || []).slice(0, 8).map((reason) => '<code>' + escapeHtml(reason) + '</code>').join('');
+    const safeId = escapeHtml(id);
+    const actions = status === 'pending'
+      ? '<div class="inbox-actions">' +
+        '<button class="primary" data-inbox-action="publish" data-inbox-id="' + safeId + '"' +
+          (dry ? ' disabled title="Disable Dry Run in System to publish"' : '') + '>✓ Publish</button>' +
+        '<button class="danger-btn" data-inbox-action="reject" data-inbox-id="' + safeId + '">× Reject</button>' +
+        '</div>'
+      : '';
+    return '<article class="inbox-item ' + escapeHtml(status) + '">' +
+      '<div class="inbox-item-head"><span>' + source + '</span><span class="badge ' + escapeHtml(status) + '">' + escapeHtml(status.toUpperCase()) + '</span></div>' +
+      '<a class="inbox-title" target="_blank" rel="noopener noreferrer" href="' + escapeHtml(url) + '">' + title + ' ↗</a>' +
+      '<p class="inbox-summary">' + description + '</p>' +
+      '<div class="inbox-item-meta"><span class="badge">' + cat + '</span>' +
+        '<span class="badge">Score: ' + Number(article.score || 0) + '/100</span>' +
+        (article.breaking ? '<span class="badge">BREAKING</span>' : '') +
+        '<span>' + escapeHtml(formatRelative(receivedAt)) + '</span></div>' +
+      (reasonTags ? '<div class="inbox-reasons" title="Filter reasons">' + reasonTags + '</div>' : '') + actions +
+      '</article>';
+  }).join('') : '<div class="inbox-empty">No news matches this view. Run a poll or change your filters.</div>';
+
+  $('[data-inbox-action]').forEach((button) => button.addEventListener('click', () =>
+    handleInboxAction(button.dataset.inboxId, button.dataset.inboxAction, button)
+  ));
+}
+
+async function refreshInbox(silent=false) {
+  try {
+    state.inbox = await api('/inbox');
+    renderInbox();
+    if (!silent) toast('Inbox refreshed');
+  } catch (error) {
+    if (!silent) toast(error.message || 'Could not load news inbox', 'error');
+  }
+}
+
+async function handleInboxAction(id, action, button) {
+  if (action === 'reject' &&
+      !await confirmAction('Reject this news?', 'This story will not be published automatically or re-queued.')) return;
+  button.disabled = true;
+  try {
+    await api('/inbox/' + encodeURIComponent(id) + '/' + action, { method:'POST' });
+    await refreshInbox(true);
+    await refreshStatus();
+    toast(action === 'publish' ? 'Story published to Discord' : 'Story rejected');
+  } catch (error) {
+    toast(error.message || 'Review action failed', 'error');
+  } finally {
+    if (button.isConnected) button.disabled = false;
+  }
 }
 
 function renderSources() {
@@ -176,6 +267,8 @@ function renderSettings() {
   $('breakingMinScore').value = s.breakingMinScore;
   $('allowedUsers').value = (s.allowedUserIds || []).join('\n');
   $('dryRun').checked = Boolean(s.dryRun);
+  $('reviewBeforePublish').checked = s.reviewBeforePublish !== false;
+  renderInbox();
   renderScoreNeedle();
 
   $('channelGrid').innerHTML = channelMeta.map(([key,title,desc]) => `
@@ -220,6 +313,7 @@ function collectSettings() {
   return {
     paused: Boolean(state.settings?.paused),
     dryRun: $('dryRun').checked,
+    reviewBeforePublish: $('reviewBeforePublish').checked,
     allowedUserIds: lines($('allowedUsers').value),
     pollIntervalMinutes: Number($('pollInterval').value),
     maxItemsPerSource: Number($('maxItems').value),
@@ -274,6 +368,7 @@ async function doPoll() {
     const result = await api('/actions/poll',{method:'POST'});
     if (result.skipped === 'already-running') toast('A poll is already running','error');
     else toast('Poll completed: ' + result.published + ' published');
+    await refreshInbox(true);
     await refreshStatus();
   } catch (error) {
     toast(error.message,'error');
@@ -490,6 +585,7 @@ async function bootstrap() {
     renderRules();
     renderSettings();
     renderDiscord(data.discord);
+    await refreshInbox(true);
   } catch (error) {
     if (!String(error.message).includes('authentication')) toast(error.message,'error');
   }
@@ -505,6 +601,9 @@ function bindEvents() {
   $('overviewPause').addEventListener('click', togglePause);
   $('overviewTest').addEventListener('click', sendTest);
   $('refreshStatus').addEventListener('click', refreshStatus);
+  $('refreshInboxBtn').addEventListener('click', () => refreshInbox(false));
+  $('inboxSearch').addEventListener('input', renderInbox);
+  $('inboxStatus').addEventListener('change', renderInbox);
 
   $('addSourceBtn').addEventListener('click', () => openSourceModal());
   $('closeSourceModal').addEventListener('click', () => $('sourceModal').classList.add('hidden'));
