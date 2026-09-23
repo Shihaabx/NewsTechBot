@@ -3,6 +3,7 @@ dist/
 .env
 data/state.json
 data/settings.json
+data/inbox.json
 data/brand-logo.json
 data/*.tmp
 data/*.corrupt-*.json
