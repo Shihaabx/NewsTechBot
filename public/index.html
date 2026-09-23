@@ -21,6 +21,7 @@
 
       <nav class="nav" aria-label="Dashboard">
         <button class="nav-item active" data-view="overview"><span>⌂</span>Overview</button>
+        <button class="nav-item" data-view="inbox"><span>▣</span>News Inbox</button>
         <button class="nav-item" data-view="sources"><span>◉</span>Sources</button>
         <button class="nav-item" data-view="filters"><span>⌁</span>Filters</button>
         <button class="nav-item" data-view="discord"><span>◈</span>Discord</button>
@@ -95,6 +96,32 @@
             <div id="eventList" class="event-list"></div>
           </article>
         </div>
+      </section>
+
+      <section class="view" id="view-inbox">
+        <div class="section-head">
+          <div>
+            <p>Review scores, sources, and filter reasons before publishing to Discord.</p>
+            <p id="inboxMode" class="inbox-mode">Manual review</p>
+          </div>
+          <button id="refreshInboxBtn" class="ghost">↻ Refresh inbox</button>
+        </div>
+        <div class="inbox-metrics" id="inboxMetrics" aria-label="Inbox totals"></div>
+        <div class="panel inbox-toolbar">
+          <label for="inboxSearch">Search news
+            <input id="inboxSearch" class="input" type="search" placeholder="Headline, summary or publisher">
+          </label>
+          <label for="inboxStatus">Status
+            <select id="inboxStatus" class="input">
+              <option value="all">All stories</option>
+              <option value="pending">Awaiting review</option>
+              <option value="filtered">Filtered out</option>
+              <option value="published">Published</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+        </div>
+        <div id="inboxList" class="inbox-list" aria-live="polite"></div>
       </section>
 
       <section class="view" id="view-sources">
@@ -199,12 +226,13 @@
           <article class="panel">
             <p class="eyebrow">WORKFLOW ACCESS</p>
             <h3>Discord controls</h3>
-            <p class="muted">Choose who can use the Video Idea / Used buttons. Leave empty only in a fully private server.</p>
+            <p class="muted">Only these Discord user IDs can use Video Idea / Used. An empty list locks these buttons for everyone.</p>
             <label>Allowed Discord user IDs
               <textarea id="allowedUsers" class="textarea" placeholder="one Discord user ID per line"></textarea>
             </label>
             <div class="check-row">
-              <label><input id="dryRun" type="checkbox"> Dry Run — score and log news without posting it</label>
+              <label><input id="reviewBeforePublish" type="checkbox"> Manual review — hold eligible news in the Inbox until approved</label>
+              <label><input id="dryRun" type="checkbox"> Dry Run — collect previews without posting to Discord</label>
             </div>
           </article>
 
