@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
 import { SettingsStore } from '../src/control/settings.js';
 import { StateStore } from '../src/storage/state.js';
+import { InboxStore } from '../src/storage/inbox.js';
 import { BrandStore } from '../src/control/brand-store.js';
 import { EventLog } from '../src/control/events.js';
 
@@ -14,10 +15,13 @@ describe('NewsTech dashboard API', () => {
   let app: ReturnType<typeof createDashboardApp>;
   let settingsStore: SettingsStore;
   let stateStore: StateStore;
+  let inboxStore: InboxStore;
   let brandStore: BrandStore;
   let sendTest: ReturnType<typeof vi.fn>;
   let applyIdentity: ReturnType<typeof vi.fn>;
   let validateSettingsChannels: ReturnType<typeof vi.fn>;
+  let publishInboxItem: ReturnType<typeof vi.fn>;
+  let rejectInboxItem: ReturnType<typeof vi.fn>;
   const auth = { Authorization: 'Bearer integration-test-token' };
 
   beforeEach(async () => {
@@ -26,6 +30,7 @@ describe('NewsTech dashboard API', () => {
     const rulesPath = path.join(tempDir, 'rules.yml');
     const settingsPath = path.join(tempDir, 'settings.json');
     const statePath = path.join(tempDir, 'state.json');
+    const inboxPath = path.join(tempDir, 'inbox.json');
     const logoPath = path.join(tempDir, 'brand-logo.json');
 
     await fs.writeFile(sourcesPath, 'sources: []\n', 'utf8');
@@ -45,6 +50,7 @@ describe('NewsTech dashboard API', () => {
     settingsStore = new SettingsStore(settingsPath, {
       paused: false,
       dryRun: false,
+      reviewBeforePublish: true,
       allowedUserIds: [],
       pollIntervalMinutes: 10,
       maxItemsPerSource: 15,
@@ -54,8 +60,9 @@ describe('NewsTech dashboard API', () => {
       channels: {},
     });
     stateStore = new StateStore(statePath);
+    inboxStore = new InboxStore(inboxPath);
     brandStore = new BrandStore(logoPath);
-    await Promise.all([settingsStore.load(), stateStore.load()]);
+    await Promise.all([settingsStore.load(), stateStore.load(), inboxStore.load()]);
 
     sendTest = vi.fn(async () => undefined);
     applyIdentity = vi.fn(async () => ({
@@ -63,6 +70,14 @@ describe('NewsTech dashboard API', () => {
       avatarUrl: '/assets/newstech-logo.svg',
     }));
     validateSettingsChannels = vi.fn(async () => []);
+    publishInboxItem = vi.fn(async (id: string) => {
+      await inboxStore.setStatus(id, 'published');
+      return inboxStore.get(id);
+    });
+    rejectInboxItem = vi.fn(async (id: string) => {
+      await inboxStore.setStatus(id, 'rejected');
+      return inboxStore.get(id);
+    });
 
     const publisher = {
       inspect: vi.fn(async () => ({
@@ -88,6 +103,9 @@ describe('NewsTech dashboard API', () => {
       env: env as any,
       settingsStore,
       stateStore,
+      inboxStore,
+      publishInboxItem,
+      rejectInboxItem,
       brandStore,
       publisher: publisher as any,
       events: new EventLog(),
@@ -249,6 +267,40 @@ describe('NewsTech dashboard API', () => {
 
     await request(app).delete('/api/brand/logo').set(auth).expect(200);
     expect(await brandStore.get()).toBeNull();
+  });
+
+  it('secures the inbox and supports publishing and rejecting reviewed stories', async () => {
+    const sample = (id: string, title: string) => ({
+      source: {
+        id: 'official-source', name: 'Official source', url: 'https://example.com/feed.xml',
+        category: 'ai' as const, trust: 100, enabled: true, official: true,
+      },
+      title, url: 'https://example.com/' + id, summary: 'An important product announcement',
+      publishedAt: new Date(), category: 'ai' as const, score: 85,
+      breaking: false, blocked: false, reasons: ['official-source'], fingerprint: id,
+    });
+    const publishId = 'a'.repeat(24);
+    const rejectId = 'b'.repeat(24);
+    await inboxStore.upsert(sample(publishId, 'First news'), 'pending');
+    await inboxStore.upsert(sample(rejectId, 'Second news'), 'pending');
+
+    await request(app).get('/api/inbox').expect(401);
+    const inbox = await request(app).get('/api/inbox').set(auth).expect(200);
+    expect(inbox.body.items).toHaveLength(2);
+    expect(inbox.body.counts.pending).toBe(2);
+
+    await request(app).post('/api/inbox/' + publishId + '/publish').expect(401);
+    const publish = await request(app).post('/api/inbox/' + publishId + '/publish').set(auth).expect(200);
+    expect(publish.body.item.status).toBe('published');
+    expect(publishInboxItem).toHaveBeenCalledWith(publishId);
+
+    const reject = await request(app).post('/api/inbox/' + rejectId + '/reject').set(auth).expect(200);
+    expect(reject.body.item.status).toBe('rejected');
+    expect(rejectInboxItem).toHaveBeenCalledWith(rejectId);
+
+    await request(app).post('/api/inbox/not-an-id/publish').set(auth).expect(409);
+    const final = await request(app).get('/api/inbox').set(auth).expect(200);
+    expect(final.body.counts).toEqual({ pending: 0, filtered: 0, rejected: 1, published: 1 });
   });
 
   it('returns JSON for unknown API routes', async () => {
