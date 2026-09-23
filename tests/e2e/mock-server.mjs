@@ -47,6 +47,7 @@ let rules = {
 let settings = {
   paused: false,
   dryRun: false,
+  reviewBeforePublish: true,
   allowedUserIds: ['111111111111111'],
   pollIntervalMinutes: 10,
   maxItemsPerSource: 15,
@@ -85,6 +86,31 @@ let customLogo = null;
 let events = [
   { id: 1, at: new Date().toISOString(), level: 'success', message: 'Mock Discord connected', detail: 'NewsTech#0001' },
 ];
+
+
+const newInboxItem = (id, title, status, score) => ({
+  id,
+  article: {
+    title, url: 'https://example.com/news/' + id, summary: 'Detailed release and useful technology news.',
+    source: sources[0], category: 'pc-hardware', score, breaking: false,
+    blocked: status === 'filtered', reasons: ['official-source', 'tech-signals:2'],
+    fingerprint: id, publishedAt: new Date().toISOString(),
+  },
+  status,
+  reasons: status === 'filtered' ? ['blocked:phone'] : ['official-source', 'tech-signals:2'],
+  receivedAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+let inboxItems = [
+  newInboxItem('aaaaaaaaaaaaaaaaaaaaaaaa', 'New high-value NVIDIA graphics card', 'pending', 92),
+  newInboxItem('bbbbbbbbbbbbbbbbbbbbbbbb', 'Major PC gaming engine update', 'pending', 85),
+  newInboxItem('cccccccccccccccccccccccc', 'Phone launch outside channel coverage', 'filtered', 21),
+];
+function inboxCounts() {
+  const counts = { pending: 0, filtered: 0, rejected: 0, published: 0 };
+  for (const item of inboxItems) counts[item.status]++;
+  return counts;
+}
 
 function channelChecks() {
   return Object.entries(settings.channels).map(([key, id]) => ({
@@ -144,6 +170,7 @@ app.get('/api/bootstrap', (_req, res) => {
     rules,
     discord: discord(),
     seenCount,
+    inboxCounts: inboxCounts(),
     events,
     customLogo: Boolean(customLogo),
     authRequired: true,
@@ -151,7 +178,23 @@ app.get('/api/bootstrap', (_req, res) => {
 });
 
 app.get('/api/status', (_req, res) => {
-  res.json({ status, settings, seenCount, events });
+  res.json({ status, settings, seenCount, inboxCounts: inboxCounts(), events });
+});
+
+app.get('/api/inbox', (_req, res) => res.json({ items: inboxItems, counts: inboxCounts() }));
+app.post('/api/inbox/:id/:action', (req, res) => {
+  const item = inboxItems.find((entry) => entry.id === req.params.id);
+  if (!item || item.status !== 'pending') return res.status(409).json({error:'Item is not pending.'});
+  if (req.params.action !== 'publish' && req.params.action !== 'reject') {
+    return res.status(404).json({error:'Unknown action'});
+  }
+  if (req.params.action === 'publish' && settings.dryRun) {
+    return res.status(409).json({error:'Disable Dry Run before publishing to Discord.'});
+  }
+  item.status = req.params.action === 'publish' ? 'published' : 'rejected';
+  item.updatedAt = new Date().toISOString();
+  addEvent('success', item.status === 'published' ? 'Reviewed news published' : 'News rejected', item.article.title);
+  res.json({ok:true, item, counts:inboxCounts()});
 });
 
 app.get('/api/discord', (_req, res) => res.json(discord()));
