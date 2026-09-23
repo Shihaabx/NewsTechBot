@@ -42,7 +42,7 @@ export class InboxStore {
           ...item,
           article: {
             ...item.article,
-            publishedAt: item.article.publishedAt ? new Date(item.article.publishedAt) : undefined,
+            publishedAt: item.article.publishedAt ? new Date(String(item.article.publishedAt)) : undefined,
           },
         };
       }
