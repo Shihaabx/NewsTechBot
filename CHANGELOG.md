@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- added persistent News Inbox with scored previews, filter reasons, search, and status filters
+- added manual editorial approval/rejection actions and an authenticated Dashboard API
+- enabled manual review by default, with opt-in auto-publishing
+- ensured Dry Run previews cannot be published to Discord
+- added an inbox publication lock to avoid simultaneous automatic/manual double posts
+- added inbox persistence/recovery, dashboard API tests, and real-browser review workflow
+- locked Discord workflow buttons when the allowlist is empty
+
+
 ## 0.3.0
 
 - added a full visual NewsTech Control Dashboard
