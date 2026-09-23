@@ -184,7 +184,7 @@ function renderInbox() {
       '</article>';
   }).join('') : '<div class="inbox-empty">No news matches this view. Run a poll or change your filters.</div>';
 
-  $('[data-inbox-action]').forEach((button) => button.addEventListener('click', () =>
+  $$('[data-inbox-action]').forEach((button) => button.addEventListener('click', () =>
     handleInboxAction(button.dataset.inboxId, button.dataset.inboxAction, button)
   ));
 }
