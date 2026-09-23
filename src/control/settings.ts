@@ -11,6 +11,7 @@ const optionalSnowflake = z.union([
 export const runtimeSettingsSchema = z.object({
   paused: z.boolean().default(false),
   dryRun: z.boolean().default(false),
+  reviewBeforePublish: z.boolean().default(true),
   allowedUserIds: z.array(
     z.string().regex(/^\d{15,25}$/, 'must be a Discord user ID'),
   ).max(50).default([]),
@@ -47,6 +48,7 @@ export function defaultsFromEnv(env: AppEnv): RuntimeSettings {
   return runtimeSettingsSchema.parse({
     paused: false,
     dryRun: env.DRY_RUN,
+    reviewBeforePublish: true,
     allowedUserIds: env.allowedUserIds,
     pollIntervalMinutes: env.POLL_INTERVAL_MINUTES,
     maxItemsPerSource: env.MAX_ITEMS_PER_SOURCE,
