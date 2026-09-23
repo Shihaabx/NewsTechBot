@@ -21,6 +21,7 @@ import { EventLog } from '../control/events.js';
 import { BrandStore } from '../control/brand-store.js';
 import type { PollCycle, RuntimeStatus } from '../control/runtime.js';
 import { StateStore } from '../storage/state.js';
+import { InboxStore, type InboxItem } from '../storage/inbox.js';
 import { DiscordPublisher } from '../discord/publisher.js';
 import { BRAND } from '../brand.js';
 
@@ -53,6 +54,9 @@ export interface DashboardDeps {
   env: AppEnv;
   settingsStore: SettingsStore;
   stateStore: StateStore;
+  inboxStore: InboxStore;
+  publishInboxItem: (id: string) => Promise<InboxItem>;
+  rejectInboxItem: (id: string) => Promise<InboxItem>;
   brandStore: BrandStore;
   publisher: DiscordPublisher;
   events: EventLog;
@@ -139,6 +143,7 @@ export function createDashboardApp(deps: DashboardDeps) {
         rules,
         discord,
         seenCount: deps.stateStore.count(),
+        inboxCounts: deps.inboxStore.counts(),
         events: deps.events.list(),
         customLogo: Boolean(customLogo),
         authRequired: Boolean(deps.env.DASHBOARD_TOKEN),
@@ -153,8 +158,36 @@ export function createDashboardApp(deps: DashboardDeps) {
       status: deps.getStatus(),
       settings: deps.settingsStore.get(),
       seenCount: deps.stateStore.count(),
+      inboxCounts: deps.inboxStore.counts(),
       events: deps.events.list(30),
     });
+  });
+
+  app.get('/api/inbox', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ items: deps.inboxStore.list(), counts: deps.inboxStore.counts() });
+  });
+
+  const inboxId = z.string().regex(/^[a-f0-9]{24}$/, 'Invalid news item ID.');
+
+  app.post('/api/inbox/:id/publish', async (req, res) => {
+    try {
+      const id = inboxId.parse(req.params.id);
+      const item = await deps.publishInboxItem(id);
+      res.json({ ok: true, item, counts: deps.inboxStore.counts() });
+    } catch (error) {
+      res.status(409).json({ error: errorMessage(error) });
+    }
+  });
+
+  app.post('/api/inbox/:id/reject', async (req, res) => {
+    try {
+      const id = inboxId.parse(req.params.id);
+      const item = await deps.rejectInboxItem(id);
+      res.json({ ok: true, item, counts: deps.inboxStore.counts() });
+    } catch (error) {
+      res.status(409).json({ error: errorMessage(error) });
+    }
   });
 
   app.get('/api/discord', async (_req, res) => {
