@@ -4,7 +4,7 @@
 
 It watches only sources you approve, removes duplicates and low-value noise, blocks phone-focused content, scores each story, routes useful news into Discord, and lets you control the system from a visual dashboard instead of Discord commands.
 
-## NewsTech v0.3.0
+## NewsTech v0.4.0
 
 ### Visual Control Dashboard
 
@@ -16,11 +16,12 @@ http://127.0.0.1:8787
 
 The dashboard includes:
 
+- **News Inbox** — persistent article previews, score/reasons, search/filter, Publish and Reject, plus pending/published/rejected/filtered counts
 - **Overview** — live health, last-poll metrics, activity log, pause/resume, Poll Now, Discord test
 - **Sources** — add, edit, delete, enable/disable, set category, trust score, official-source flag, and test RSS/Atom URLs
 - **Filters** — blocked topics, high-value signals, breaking signals, low-value signals, and category keywords
 - **Discord** — map every category/workflow channel, validate permissions, refresh bot/server status, and send a branded test card
-- **System** — polling interval, per-source item limit, article age, publish/breaking thresholds, Dry Run, workflow user allowlist, and duplicate-history reset
+- **System** — manual-review/auto-publish switch (manual by default), polling interval, limits and thresholds, Dry Run, workflow user allowlist and duplicate-history reset
 - **Brand** — preview the NewsTech/Juraa identity, upload a PNG/JPEG/WebP logo, reset to the bundled mark, and apply the current name/logo to the Discord bot profile
 
 Discord slash commands are not used for administration. Discord stays focused on the news feed and the **Video Idea / Used** workflow buttons.
@@ -51,6 +52,10 @@ technology relevance + value scoring
           ↓
 category routing
           ↓
+News Inbox (manual review by default)
+          ↓
+Approve / Reject, or enable auto-publish
+          ↓
 branded Discord story card
           ↓
 Video Idea / Used workflow
@@ -64,7 +69,7 @@ Secrets and infrastructure stay outside the web UI:
 - `DISCORD_GUILD_ID`
 - dashboard host/port/token
 
-Everything that controls normal NewsTech behavior is editable from the Dashboard.
+Everything that controls normal NewsTech behavior is editable from the Dashboard. A blank Discord workflow allowlist locks the workflow buttons for everyone.
 
 By default the Dashboard binds to `127.0.0.1`, so it is available only on the same machine. If you expose it beyond localhost, `DASHBOARD_TOKEN` must be at least 16 characters.
 
@@ -93,6 +98,7 @@ http://127.0.0.1:8787
 ```
 
 7. Configure sources, Discord channels, filters, thresholds, workflow access, and branding from the Dashboard.
+8. Open **News Inbox**. Eligible stories wait there until you click **Publish** or **Reject**. Toggle manual review off under **System** to auto-post qualifying stories. **Dry Run** keeps previews but blocks Discord publishing, including manual actions.
 
 ### Optional local dashboard token
 
@@ -154,7 +160,7 @@ It loses points for:
 - missing dates
 - weak technology relevance
 
-NewsTech remembers rejected and published items for 30 days to avoid repeatedly processing the same stories.
+NewsTech remembers rejected and published items for 30 days to avoid repeatedly processing the same stories. The inbox is stored in `data/inbox.json` and keeps the most recent 500 previews for up to 30 days.
 
 ## Reliability
 
@@ -164,7 +170,8 @@ NewsTech remembers rejected and published items for 30 days to avoid repeatedly 
 - dynamic polling interval
 - pause/resume without shutting down Discord or Dashboard
 - atomic state/settings/config writes
-- corrupted state/settings backup and recovery
+- corrupted state/settings/inbox backup and recovery
+- persistent editorial decisions and a shared per-article publication lock
 - cross-publisher headline deduplication
 - article-age backlog protection
 - Discord channel/server/permission validation
