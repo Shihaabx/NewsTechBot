@@ -14,7 +14,7 @@ test('editor can review, filter, publish and reject news without Discord command
   await expect(page.locator('#pageTitle')).toHaveText('News Inbox');
   await expect(page.locator('#inboxList .inbox-item')).toHaveCount(3);
   await expect(page.locator('#inboxMetrics .pending strong')).toHaveText('2');
-  await page.locator('#inboxSearch').fill('NVIDIA');
+  await page.locator('#inboxSearch').fill('graphics card');
   await expect(page.locator('#inboxList .inbox-item')).toHaveCount(1);
   await page.locator('#inboxSearch').fill('');
   await page.locator('#inboxStatus').selectOption('filtered');
